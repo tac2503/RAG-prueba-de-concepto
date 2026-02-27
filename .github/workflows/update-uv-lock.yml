@@ -63,6 +63,6 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add uv.lock sdks/python/uv.lock sdks/mcp/uv.lock
-          git commit -m "chore: update uv.lock files after version bump [skip ci]"
+          git commit -m "chore: update uv.lock files after version bump"
           git push
 
