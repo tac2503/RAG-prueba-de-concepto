@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { BrandSwitcher } from "@/components/brand-switcher";
 import Logo from "@/components/icons/openrag-logo";
 import { UserNav } from "@/components/user-nav";
 import { useTask } from "@/contexts/task-context";
@@ -22,7 +23,7 @@ export function Header() {
       <div className="header-start-display px-[16px]">
         {/* Logo/Title */}
         <div className="flex items-center">
-          <Logo className="fill-primary" width={24} height={22} />
+          <Logo className="fill-foreground" width={24} height={22} />
           <span
             className="text-lg font-semibold pl-2.5"
             style={{ fontFamily: '"IBM Plex Mono", monospace' }}
@@ -44,6 +45,11 @@ export function Header() {
 
           {/* Discord Link */}
           {/* <DiscordLink inviteCode="EqksyE2EX9" /> */}
+
+          <BrandSwitcher />
+
+          {/* Separator */}
+          <div className="w-px h-6 bg-border mx-3" />
 
           {/* Task Notification Bell */}
           <button
