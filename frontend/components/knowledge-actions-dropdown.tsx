@@ -59,17 +59,11 @@ export const KnowledgeActionsDropdown = ({
 
   const handleDelete = async () => {
     try {
-      const result = await deleteDocumentMutation.mutateAsync({ filename });
+      await deleteDocumentMutation.mutateAsync({ filename });
       await refreshTasks();
-      if ((result.deleted_chunks || 0) > 0) {
-        toast.success("Successfully deleted document", {
-          description: formatFilesToDelete([{ filename }], 1),
-        });
-      } else {
-        toast.warning(
-          "No document chunks were deleted. The file may be missing or not deletable in your current context.",
-        );
-      }
+      toast.success("Successfully deleted document", {
+        description: formatFilesToDelete([{ filename }], 1),
+      });
       setShowDeleteDialog(false);
     } catch (error) {
       toast.error(

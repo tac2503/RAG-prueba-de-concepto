@@ -5,7 +5,6 @@ import {
 } from "@tanstack/react-query";
 import type { ParsedQueryData } from "@/contexts/knowledge-filter-context";
 import { SEARCH_CONSTANTS } from "@/lib/constants";
-import { buildSearchPayloadFilters } from "@/lib/filter-normalization";
 
 export interface SearchPayload {
   query: string;
@@ -90,8 +89,40 @@ export const useGetSearchQuery = (
         scoreThreshold: queryData?.scoreThreshold || 0,
       };
       if (queryData?.filters) {
-        searchPayload.filters =
-          buildSearchPayloadFilters(queryData.filters) ?? undefined;
+        const filters = queryData.filters;
+
+        // Only include filters if they're not wildcards (not "*")
+        const hasSpecificFilters =
+          !filters.data_sources.includes("*") ||
+          !filters.document_types.includes("*") ||
+          !filters.owners.includes("*") ||
+          (filters.connector_types && !filters.connector_types.includes("*"));
+
+        if (hasSpecificFilters) {
+          const processedFilters: SearchPayload["filters"] = {};
+
+          // Only add filter arrays that don't contain wildcards
+          if (!filters.data_sources.includes("*")) {
+            processedFilters.data_sources = filters.data_sources;
+          }
+          if (!filters.document_types.includes("*")) {
+            processedFilters.document_types = filters.document_types;
+          }
+          if (!filters.owners.includes("*")) {
+            processedFilters.owners = filters.owners;
+          }
+          if (
+            filters.connector_types &&
+            !filters.connector_types.includes("*")
+          ) {
+            processedFilters.connector_types = filters.connector_types;
+          }
+
+          // Only add filters object if it has any actual filters
+          if (Object.keys(processedFilters).length > 0) {
+            searchPayload.filters = processedFilters;
+          }
+        }
       }
 
       const response = await fetch(`/api/search`, {
