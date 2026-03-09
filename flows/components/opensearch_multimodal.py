@@ -1658,6 +1658,11 @@ class OpenSearchVectorStoreComponentMultimodalMultiEmbedding(LCVectorStoreCompon
             keyword_only_body["min_score"] = score_threshold
 
         def run_keyword_fallback(reason: str):
+            if not q:
+                # Keep empty-query behavior deterministic: do not run multi_match("")
+                # during fallback paths, which can otherwise return broad/unexpected hits.
+                self.log("[FALLBACK] Empty query detected; returning no results.")
+                return {"hits": {"hits": []}}
             logger.warning(
                 "Falling back to keyword-only OpenSearch retrieval",
                 reason=reason,
@@ -1796,13 +1801,9 @@ class OpenSearchVectorStoreComponentMultimodalMultiEmbedding(LCVectorStoreCompon
                     )
                 except RequestError as retry_error:
                     retry_error_message = str(retry_error)
-                    retry_lowered = retry_error_message.lower()
-                    if "not knn_vector type" in retry_lowered or ("field" in retry_lowered and "knn" in retry_lowered):
-                        resp = run_keyword_fallback(
-                            f"knn failed after num_candidates retry: {retry_error_message}"
-                        )
-                    else:
-                        raise
+                    resp = run_keyword_fallback(
+                        f"search failed after num_candidates retry: {retry_error_message}"
+                    )
             elif "knn_vector" in lowered or ("field" in lowered and "knn" in lowered):
                 resp = run_keyword_fallback(f"knn query error: {error_message}")
             else:
