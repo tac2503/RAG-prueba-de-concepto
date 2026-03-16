@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import { useConnectConnectorMutation } from "@/app/api/mutations/useConnectConnectorMutation";
 import { useDisconnectConnectorMutation } from "@/app/api/mutations/useDisconnectConnectorMutation";
 import {
   type Connector as QueryConnector,
   useGetConnectorsQuery,
 } from "@/app/api/queries/useGetConnectorsQuery";
+import AwsLogo from "@/components/icons/aws-logo";
 import GoogleDriveIcon from "@/components/icons/google-drive-logo";
 import IBMCOSIcon from "@/components/icons/ibm-cos-icon";
 import OneDriveIcon from "@/components/icons/one-drive-logo";
 import SharePointIcon from "@/components/icons/share-point-logo";
-import AwsLogo from "@/components/icons/aws-logo";
 import { useAuth } from "@/contexts/auth-context";
 import ConnectorCard, { type Connector } from "./connector-card";
 import ConnectorsSkeleton from "./connectors-skeleton";
@@ -20,7 +20,7 @@ import IBMCOSSettingsDialog from "./ibm-cos-settings-dialog";
 import S3SettingsDialog from "./s3-settings-dialog";
 
 export default function ConnectorCards() {
-  const { isAuthenticated, isNoAuthMode } = useAuth();
+  const { isAuthenticated, isNoAuthMode, isIbmAuthMode } = useAuth();
   const router = useRouter();
   const [ibmCOSDialogOpen, setIBMCOSDialogOpen] = useState(false);
   const [s3DialogOpen, setS3DialogOpen] = useState(false);
@@ -50,10 +50,15 @@ export default function ConnectorCards() {
     );
   }, []);
 
-  const connectors = queryConnectors.map((c) => ({
-    ...c,
-    icon: getConnectorIcon(c.icon),
-  })) as Connector[];
+  const connectors = queryConnectors
+    .filter((c) => {
+      if (c.type === "ibm_cos" || c.type === "aws_s3") return isIbmAuthMode;
+      return true;
+    })
+    .map((c) => ({
+      ...c,
+      icon: getConnectorIcon(c.icon),
+    })) as Connector[];
 
   const handleConnect = async (connector: Connector) => {
     connectMutation.mutate({
@@ -121,10 +126,7 @@ export default function ConnectorCards() {
         open={ibmCOSDialogOpen}
         setOpen={setIBMCOSDialogOpen}
       />
-      <S3SettingsDialog
-        open={s3DialogOpen}
-        setOpen={setS3DialogOpen}
-      />
+      <S3SettingsDialog open={s3DialogOpen} setOpen={setS3DialogOpen} />
     </>
   );
 }

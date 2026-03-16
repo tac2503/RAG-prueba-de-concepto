@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 import aiofiles
 from typing import Dict, List, Any, Optional
@@ -365,13 +366,13 @@ class ConnectionManager:
                 "name": IBMCOSConnector.CONNECTOR_NAME,
                 "description": IBMCOSConnector.CONNECTOR_DESCRIPTION,
                 "icon": IBMCOSConnector.CONNECTOR_ICON,
-                "available": True,  # Credentials provided via settings form
+                "available": os.environ.get("IBM_AUTH_ENABLED", "").lower() in ("1", "true", "yes"),
             },
             "aws_s3": {
                 "name": S3Connector.CONNECTOR_NAME,
                 "description": S3Connector.CONNECTOR_DESCRIPTION,
                 "icon": S3Connector.CONNECTOR_ICON,
-                "available": True,  # Credentials provided via settings form
+                "available": os.environ.get("IBM_AUTH_ENABLED", "").lower() in ("1", "true", "yes"),
             },
         }
 

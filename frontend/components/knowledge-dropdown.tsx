@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/auth-context";
 import { useTask } from "@/contexts/task-context";
 import {
   duplicateCheck,
@@ -81,6 +82,7 @@ const FolderIconWithColor = ({ className }: { className?: string }) => (
 );
 
 export function KnowledgeDropdown() {
+  const { isIbmAuthMode } = useAuth();
   const { addTask } = useTask();
   const { refetch: refetchTasks } = useGetTasksQuery();
   const queryClient = useQueryClient();
@@ -521,7 +523,7 @@ export function KnowledgeDropdown() {
       icon: FolderIconWithColor,
       onClick: () => folderInputRef.current?.click(),
     },
-    ...(s3Configured
+    ...(isIbmAuthMode && s3Configured
       ? [
           {
             label: "Amazon S3",
@@ -530,7 +532,7 @@ export function KnowledgeDropdown() {
           },
         ]
       : []),
-    ...(ibmCosConfigured
+    ...(isIbmAuthMode && ibmCosConfigured
       ? [
           {
             label: "IBM Cloud Object Storage",

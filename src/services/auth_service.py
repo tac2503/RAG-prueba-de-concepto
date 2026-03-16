@@ -492,6 +492,8 @@ class AuthService:
 
     async def get_user_info(self, request) -> Optional[dict]:
         """Get current user information from request"""
+        from config.settings import IBM_AUTH_ENABLED
+
         # In no-auth mode, return a consistent response
         if is_no_auth_mode():
             return {"authenticated": False, "user": None, "no_auth_mode": True}
@@ -501,6 +503,7 @@ class AuthService:
         if user:
             user_data = {
                 "authenticated": True,
+                "ibm_auth_mode": IBM_AUTH_ENABLED,
                 "user": {
                     "user_id": user.user_id,
                     "email": user.email,
@@ -512,7 +515,7 @@ class AuthService:
                     else None,
                 },
             }
-            
+
             return user_data
         else:
-            return {"authenticated": False, "user": None}
+            return {"authenticated": False, "ibm_auth_mode": IBM_AUTH_ENABLED, "user": None}
