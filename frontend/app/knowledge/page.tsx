@@ -9,7 +9,7 @@ import {
   type ValueFormatterParams,
 } from "ag-grid-community";
 import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
-import { Cloud, FileIcon, Globe, Heading4, RefreshCw } from "lucide-react";
+import { Cloud, FileIcon, Globe, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KnowledgeDropdown } from "@/components/knowledge-dropdown";
@@ -22,6 +22,7 @@ import "@/components/AgGrid/registerAgGridModules";
 import "@/components/AgGrid/agGridStyles.css";
 import { toast } from "sonner";
 import { KnowledgeActionsDropdown } from "@/components/knowledge-actions-dropdown";
+import { KnowledgeSearchBar } from "@/components/knowledge-search-bar";
 import { KnowledgeSearchInput } from "@/components/knowledge-search-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -45,7 +46,6 @@ import SharePointIcon from "../../components/icons/share-point-logo";
 import { useDeleteDocument } from "../api/mutations/useDeleteDocument";
 import { useRefreshOpenragDocs } from "../api/mutations/useRefreshOpenragDocs";
 import { useSyncAllConnectors } from "../api/mutations/useSyncConnector";
-import { ibmSettingsFont } from "../settings/page";
 
 // Function to get the appropriate icon for a connector type
 function getSourceIcon(connectorType?: string) {
@@ -455,10 +455,7 @@ function SearchPage() {
         if (showOpenragRefreshCue) {
           return (
             <div className="inline-flex items-center justify-center h-5 w-5">
-              <RefreshCw
-                className="h-4 w-4 text-primary animate-spin"
-                aria-label="OpenRAG doc is refreshing"
-              />
+              <RefreshCw className="h-4 w-4 text-primary animate-spin" />
             </div>
           );
         }
@@ -608,8 +605,56 @@ function SearchPage() {
         {/* Search Input Area */}
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 flex items-center gap-3">
-            <KnowledgeSearchInput />
-            <KnowledgeDropdown />
+            <KnowledgeSearchBar />
+            {/* <KnowledgeSearchInput />
+            {isCloudBrand && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-shrink-0"
+                disabled={syncAllConnectorsMutation.isPending}
+                onClick={async () => {
+                  try {
+                    toast.info("Syncing all cloud connectors...");
+                    const result =
+                      await syncAllConnectorsMutation.mutateAsync();
+                    if (result.status === "no_files") {
+                      toast.info(
+                        result.message ||
+                          "No cloud files to sync. Add files from cloud connectors first.",
+                      );
+                    } else if (
+                      result.synced_connectors &&
+                      result.synced_connectors.length > 0
+                    ) {
+                      toast.success(
+                        `Sync started for ${result.synced_connectors.join(", ")}. Check task notifications for progress.`,
+                      );
+                    } else if (result.errors && result.errors.length > 0) {
+                      toast.error("Some connectors failed to sync");
+                    }
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Failed to sync connectors",
+                    );
+                  }
+                }}
+              >
+                {syncAllConnectorsMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
+            <KnowledgeDropdown /> */}
           </div>
 
           {selectedRows.length > 0 && (
@@ -622,77 +667,81 @@ function SearchPage() {
               Delete
             </Button>
           )}
-
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-lg flex-shrink-0"
-            disabled={syncAllConnectorsMutation.isPending}
-            onClick={async () => {
-              try {
-                toast.info("Syncing all cloud connectors...");
-                const result = await syncAllConnectorsMutation.mutateAsync();
-                if (result.status === "no_files") {
-                  toast.info(
-                    result.message ||
-                      "No cloud files to sync. Add files from cloud connectors first.",
+          {!isCloudBrand && (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg flex-shrink-0"
+              disabled={syncAllConnectorsMutation.isPending}
+              onClick={async () => {
+                try {
+                  toast.info("Syncing all cloud connectors...");
+                  const result = await syncAllConnectorsMutation.mutateAsync();
+                  if (result.status === "no_files") {
+                    toast.info(
+                      result.message ||
+                        "No cloud files to sync. Add files from cloud connectors first.",
+                    );
+                  } else if (
+                    result.synced_connectors &&
+                    result.synced_connectors.length > 0
+                  ) {
+                    toast.success(
+                      `Sync started for ${result.synced_connectors.join(", ")}. Check task notifications for progress.`,
+                    );
+                  } else if (result.errors && result.errors.length > 0) {
+                    toast.error("Some connectors failed to sync");
+                  }
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to sync connectors",
                   );
-                } else if (
-                  result.synced_connectors &&
-                  result.synced_connectors.length > 0
-                ) {
-                  toast.success(
-                    `Sync started for ${result.synced_connectors.join(", ")}. Check task notifications for progress.`,
-                  );
-                } else if (result.errors && result.errors.length > 0) {
-                  toast.error("Some connectors failed to sync");
                 }
-              } catch (error) {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to sync connectors",
-                );
-              }
-            }}
-          >
-            {syncAllConnectorsMutation.isPending ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync
-              </>
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-lg flex-shrink-0"
-            disabled={refreshOpenragDocsMutation.isPending}
-            onClick={async () => {
-              try {
-                toast.info("Refreshing OpenRAG docs...");
-                const result = await refreshOpenragDocsMutation.mutateAsync();
-                toast.success(result.message);
-              } catch (error) {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to refresh OpenRAG docs",
-                );
-              }
-            }}
-          >
-            {refreshOpenragDocsMutation.isPending ? (
-              <>Refreshing docs...</>
-            ) : (
-              <>Fetch latest docs</>
-            )}
-          </Button>
+              }}
+            >
+              {syncAllConnectorsMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sync
+                </>
+              )}
+            </Button>
+          )}
+
+          {!isCloudBrand && (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg flex-shrink-0"
+              disabled={refreshOpenragDocsMutation.isPending}
+              onClick={async () => {
+                try {
+                  toast.info("Refreshing OpenRAG docs...");
+                  const result = await refreshOpenragDocsMutation.mutateAsync();
+                  toast.success(result.message);
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to refresh OpenRAG docs",
+                  );
+                }
+              }}
+            >
+              {refreshOpenragDocsMutation.isPending ? (
+                <>Refreshing docs...</>
+              ) : (
+                <>Fetch latest docs</>
+              )}
+            </Button>
+          )}
         </div>
         <AgGridReact
           className="w-full overflow-auto"

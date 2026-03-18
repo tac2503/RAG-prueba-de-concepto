@@ -47,6 +47,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
+import { useIsCloudBrand } from "@/contexts/brand-context";
 import { useTask } from "@/contexts/task-context";
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -64,6 +65,8 @@ import { getModelLogo, type ModelProvider } from "./_helpers/model-helpers";
 const { MAX_SYSTEM_PROMPT_CHARS } = UI_CONSTANTS;
 
 function KnowledgeSourcesPage() {
+  const isCloudBrand = useIsCloudBrand();
+
   const { isAuthenticated, isNoAuthMode } = useAuth();
   const { addTask, tasks } = useTask();
   const searchParams = useSearchParams();
