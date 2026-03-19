@@ -551,7 +551,7 @@ function KnowledgeSourcesPage() {
           <h2
             className={cn(
               "mb-2 text-lg font-semibold tracking-tight",
-              isCloudBrand && "ibm-section-title",
+              isCloudBrand && "ibm-settings-section-title",
             )}
           >
             Cloud Connectors
@@ -564,7 +564,10 @@ function KnowledgeSourcesPage() {
             <Card className="border-accent-amber-foreground">
               <CardHeader>
                 <CardTitle
-                  className={cn("text-lg", isCloudBrand && "ibm-section-title")}
+                  className={cn(
+                    "text-lg",
+                    isCloudBrand && "ibm-settings-section-title",
+                  )}
                 >
                   Cloud connectors require authentication
                 </CardTitle>
@@ -673,7 +676,7 @@ function KnowledgeSourcesPage() {
           <h2
             className={cn(
               "mb-2 text-lg font-semibold tracking-tight",
-              isCloudBrand && "ibm-section-title",
+              isCloudBrand && "ibm-settings-section-title",
             )}
           >
             Model Providers
@@ -687,7 +690,10 @@ function KnowledgeSourcesPage() {
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
             <CardTitle
-              className={cn("text-lg", isCloudBrand && "ibm-section-title")}
+              className={cn(
+                "text-lg",
+                isCloudBrand && "ibm-settings-section-title",
+              )}
             >
               Agent
             </CardTitle>
@@ -839,7 +845,10 @@ function KnowledgeSourcesPage() {
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
             <CardTitle
-              className={cn("text-lg", isCloudBrand && "ibm-section-title")}
+              className={cn(
+                "text-lg",
+                isCloudBrand && "ibm-settings-section-title",
+              )}
             >
               Knowledge Ingest
             </CardTitle>
@@ -1094,7 +1103,10 @@ function KnowledgeSourcesPage() {
           <CardHeader>
             <div className="flex items-center justify-between mb-3">
               <CardTitle
-                className={cn("text-lg", isCloudBrand && "ibm-section-title")}
+                className={cn(
+                  "text-lg",
+                  isCloudBrand && "ibm-settings-section-title",
+                )}
               >
                 API Keys
               </CardTitle>

@@ -595,7 +595,14 @@ function SearchPage() {
     <>
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold">Project Knowledge</h2>
+          <h2
+            className={cn(
+              "text-lg font-semibold",
+              isCloudBrand && "ibm-section-title",
+            )}
+          >
+            Project Knowledge
+          </h2>
         </div>
         {isCloudBrand ? (
           <KnowledgeSearchBar />
