@@ -110,7 +110,7 @@ jobs:
             service: openrag-backend
             platform: linux/arm64
             arch: arm64
-            runs-on: [self-hosted, Linux, ARM64, langflow-ai-arm64-40gb-ephemeral]
+            runs-on: [self-hosted, Linux, ARM64, langflow-arm64-runners-group-ephemeral-sudo]
 
           # frontend
           - image: frontend
@@ -124,7 +124,7 @@ jobs:
             service: openrag-frontend
             platform: linux/arm64
             arch: arm64
-            runs-on: [self-hosted, Linux, ARM64, langflow-ai-arm64-40gb-ephemeral]
+            runs-on: [self-hosted, Linux, ARM64, langflow-arm64-runners-group-ephemeral-sudo]
 
           # langflow
           - image: langflow
@@ -138,7 +138,7 @@ jobs:
             service: openrag-langflow
             platform: linux/arm64
             arch: arm64
-            runs-on: [self-hosted, Linux, ARM64, langflow-ai-arm64-40gb-ephemeral]
+            runs-on: [self-hosted, Linux, ARM64, langflow-arm64-runners-group-ephemeral-sudo]
 
           # opensearch
           - image: opensearch
@@ -152,7 +152,7 @@ jobs:
             service: openrag-opensearch
             platform: linux/arm64
             arch: arm64
-            runs-on: [self-hosted, Linux, ARM64, langflow-ai-arm64-40gb-ephemeral]
+            runs-on: [self-hosted, Linux, ARM64, langflow-arm64-runners-group-ephemeral-sudo]
 
 
     runs-on: ${{ matrix.runs-on }}
