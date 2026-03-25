@@ -185,7 +185,7 @@ async def _get_ibm_user(request: Request, required: bool) -> Optional["User"]:
             logger.debug("[IBM Auth] IBM LH credentials set successfully")
             jwt_token = f"Basic {lh_credentials}"
         else:
-            logger.warning("IBM LH credentials not found in header or connections store.Using JWT token instead.")
+            logger.warning("[IBM Auth] IBM LH credentials not found in header or connections store. Using JWT token instead.")
         user = User(
             user_id=user_id,
             email=email,
