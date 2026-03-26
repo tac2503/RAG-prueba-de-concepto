@@ -494,7 +494,7 @@ const OnboardingCard = ({
                       >
                         <div
                           className={cn(
-                            "flex items-center justify-center gap-2 w-8 h-8 rounded-md border",
+                            "flex items-center justify-center gap-2 w-8 h-8 rounded-none border",
                             modelProvider === "anthropic"
                               ? "bg-[#D97757]"
                               : "bg-muted",
@@ -527,7 +527,7 @@ const OnboardingCard = ({
                     >
                       <div
                         className={cn(
-                          "flex items-center justify-center gap-2 w-8 h-8 rounded-md border",
+                          "flex items-center justify-center gap-2 w-8 h-8 rounded-none border",
                           modelProvider === "openai" ? "bg-white" : "bg-muted",
                         )}
                       >
@@ -557,7 +557,7 @@ const OnboardingCard = ({
                     >
                       <div
                         className={cn(
-                          "flex items-center justify-center gap-2 w-8 h-8 rounded-md border",
+                          "flex items-center justify-center gap-2 w-8 h-8 rounded-none border",
                           modelProvider === "watsonx"
                             ? "bg-[#1063FE]"
                             : "bg-muted",
@@ -590,7 +590,7 @@ const OnboardingCard = ({
                       >
                         <div
                           className={cn(
-                            "flex items-center justify-center gap-2 w-8 h-8 rounded-md border",
+                            "flex items-center justify-center gap-2 w-8 h-8 rounded-none border",
                             modelProvider === "ollama"
                               ? "bg-white"
                               : "bg-muted",
