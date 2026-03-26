@@ -337,16 +337,16 @@ function SearchPage() {
       checkboxSelection: (params: CheckboxSelectionCallbackParams<File>) =>
         (params?.data?.status || "active") === "active",
       headerCheckboxSelection: true,
-      initialFlex: 2,
-      minWidth: 220,
+      ...(isCloudBrand
+        ? { flex: 2.2, minWidth: 260 }
+        : { initialFlex: 2, minWidth: 220 }),
       cellRenderer: ({ data, value }: CustomCellRendererProps<File>) => {
-        // Read status directly from data on each render
         const status = data?.status || "active";
         const isActive = status === "active";
         const showOpenragSourceAnimation =
           isOpenragDocsRow(data) && hasOpenragRefreshCue;
         return (
-          <div className="flex items-center overflow-hidden w-full">
+          <div className="flex items-center overflow-hidden w-full min-w-0 h-full">
             <div
               className={`transition-opacity duration-200 ${
                 isActive ? "w-0" : "w-7"
@@ -354,184 +354,12 @@ function SearchPage() {
             ></div>
             <button
               type="button"
-              className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors text-left flex-1 overflow-hidden"
-              onClick={() => {
-                if (!isActive) {
-                  return;
-                }
-                router.push(
-                  `/knowledge/chunks?filename=${encodeURIComponent(
-                    data?.filename ?? "",
-                  )}`,
-                );
-              }}
-            >
-              {getSourceIcon(data?.connector_type)}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className={`font-medium truncate ${
-                      showOpenragSourceAnimation
-                        ? "text-primary animate-pulse"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {value}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" align="start">
-                  {value}
-                </TooltipContent>
-              </Tooltip>
-            </button>
-          </div>
-        );
-      },
-    },
-    {
-      field: "size",
-      headerName: "Size",
-      valueFormatter: (params: ValueFormatterParams<File>) =>
-        params.value ? `${Math.round(params.value / 1024)} KB` : "-",
-    },
-    {
-      field: "mimetype",
-      headerName: "Type",
-    },
-    {
-      field: "owner",
-      headerName: "Owner",
-      valueFormatter: (params: ValueFormatterParams<File>) =>
-        params.data?.owner_name || params.data?.owner_email || "—",
-    },
-    {
-      field: "chunkCount",
-      headerName: "Chunks",
-      valueFormatter: (params: ValueFormatterParams<File>) =>
-        params.data?.chunkCount?.toString() || "-",
-    },
-    {
-      field: "avgScore",
-      headerName: "Avg score",
-      cellRenderer: ({ value }: CustomCellRendererProps<File>) => {
-        return (
-          <span className="text-xs text-accent-emerald-foreground bg-accent-emerald px-2 py-1 rounded">
-            {value?.toFixed(2) ?? "-"}
-          </span>
-        );
-      },
-    },
-    {
-      field: "embedding_model",
-      headerName: "Embedding model",
-      minWidth: 200,
-      cellRenderer: ({ data }: CustomCellRendererProps<File>) => (
-        <span className="text-xs text-muted-foreground">
-          {data?.embedding_model || "—"}
-        </span>
-      ),
-    },
-    {
-      field: "embedding_dimensions",
-      headerName: "Dimensions",
-      width: 110,
-      cellRenderer: ({ data }: CustomCellRendererProps<File>) => (
-        <span className="text-xs text-muted-foreground">
-          {typeof data?.embedding_dimensions === "number"
-            ? data.embedding_dimensions.toString()
-            : "—"}
-        </span>
-      ),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      cellRenderer: ({ data }: CustomCellRendererProps<File>) => {
-        const status = data?.status || "active";
-        const showOpenragRefreshCue =
-          isOpenragDocsRow(data) && hasOpenragRefreshCue;
-        if (showOpenragRefreshCue) {
-          return (
-            <div className="inline-flex items-center justify-center h-5 w-5">
-              <RefreshCw
-                className="h-4 w-4 text-primary animate-spin"
-                aria-label="OpenRAG doc is refreshing"
-              />
-            </div>
-          );
-        }
-        if (status === "failed") {
-          return (
-            <button
-              type="button"
-              className="inline-flex h-full w-full items-center text-red-500 transition hover:text-red-400"
-              aria-label="View ingestion error"
-              data-testid="failed-status-cell-trigger"
-              onClick={() => {
-                selectTask(getTaskIdForRow(data));
-                openMenu();
-                setRecentTasksExpanded(true);
-              }}
-            >
-              <StatusBadge status={status} className="pointer-events-none" />
-            </button>
-          );
-        }
-        return <StatusBadge status={status} />;
-      },
-    },
-    {
-      cellRenderer: ({ data }: CustomCellRendererProps<File>) => {
-        const status = data?.status || "active";
-        if (status !== "active") {
-          return null;
-        }
-        return (
-          <KnowledgeActionsDropdown
-            filename={data?.filename || ""}
-            connectorType={data?.connector_type}
-          />
-        );
-      },
-      cellStyle: {
-        alignItems: "center",
-        display: "flex",
-        justifyContent: "center",
-        padding: 0,
-      },
-      colId: "actions",
-      filter: false,
-      minWidth: 0,
-      width: 40,
-      resizable: false,
-      sortable: false,
-      initialFlex: 0,
-    },
-  ];
-
-  const columnDefsNew: ColDef<File>[] = [
-    {
-      field: "filename",
-      headerName: "Source",
-      checkboxSelection: (params: CheckboxSelectionCallbackParams<File>) =>
-        (params?.data?.status || "active") === "active",
-      headerCheckboxSelection: true,
-      flex: 2.2,
-      minWidth: 260,
-      cellRenderer: ({ data, value }: CustomCellRendererProps<File>) => {
-        const status = data?.status || "active";
-        const isActive = status === "active";
-        const showOpenragSourceAnimation =
-          isOpenragDocsRow(data) && hasOpenragRefreshCue;
-
-        return (
-          <div className="flex items-center overflow-hidden w-full">
-            <button
-              type="button"
               className={cn(
                 "flex items-center gap-2 text-left flex-1 overflow-hidden transition-colors",
                 isActive
-                  ? "cursor-pointer hover:text-primary"
+                  ? isCloudBrand
+                    ? "cursor-pointer hover:text-primary"
+                    : "cursor-pointer hover:text-blue-600"
                   : "cursor-default",
               )}
               onClick={() => {
@@ -548,7 +376,7 @@ function SearchPage() {
                 <TooltipTrigger asChild>
                   <span
                     className={cn(
-                      "truncate font-medium",
+                      "font-medium truncate min-w-0",
                       showOpenragSourceAnimation
                         ? "text-primary animate-pulse"
                         : "text-foreground",
@@ -569,61 +397,99 @@ function SearchPage() {
     {
       field: "size",
       headerName: "Size",
-      flex: 1,
-      minWidth: 110,
+      ...(isCloudBrand ? { flex: 1, minWidth: 110 } : {}),
       valueFormatter: (params: ValueFormatterParams<File>) =>
         params.value ? `${Math.round(params.value / 1024)} KB` : "-",
-      cellClass: "text-muted-foreground",
+      cellClass: isCloudBrand ? "text-muted-foreground" : undefined,
     },
     {
       field: "mimetype",
       headerName: "Type",
-      flex: 1,
-      minWidth: 110,
-      cellClass: "text-muted-foreground",
+      ...(isCloudBrand ? { flex: 1, minWidth: 110 } : {}),
+      cellClass: isCloudBrand ? "text-muted-foreground" : undefined,
     },
     {
       field: "owner",
       headerName: "Owner",
-      flex: 1.4,
-      minWidth: 180,
+      ...(isCloudBrand ? { flex: 1.4, minWidth: 180 } : {}),
       valueFormatter: (params: ValueFormatterParams<File>) =>
         params.data?.owner_name || params.data?.owner_email || "—",
-      cellClass: "text-muted-foreground",
+      cellClass: isCloudBrand ? "text-muted-foreground" : undefined,
     },
     {
       field: "chunkCount",
       headerName: "Chunks",
-      flex: 0.9,
-      minWidth: 95,
+      ...(isCloudBrand ? { flex: 0.9, minWidth: 95 } : {}),
       valueFormatter: (params: ValueFormatterParams<File>) =>
         params.data?.chunkCount?.toString() || "-",
-      cellClass: "text-muted-foreground",
+      cellClass: isCloudBrand ? "text-muted-foreground" : undefined,
     },
     {
       field: "avgScore",
       headerName: "Avg score",
-      flex: 1,
-      minWidth: 120,
-      valueFormatter: (params: ValueFormatterParams<File>) =>
-        typeof params.value === "number" ? params.value.toString() : "-",
-      cellClass: "text-muted-foreground",
+      ...(isCloudBrand ? { flex: 1, minWidth: 120 } : {}),
+      cellRenderer: ({ value }: CustomCellRendererProps<File>) => {
+        if (isCloudBrand) {
+          return (
+            <span className="text-muted-foreground">
+              {typeof value === "number" ? value.toFixed(2) : "-"}
+            </span>
+          );
+        }
+        return (
+          <span className="text-xs text-accent-emerald-foreground bg-accent-emerald px-2 py-1 rounded">
+            {value?.toFixed(2) ?? "-"}
+          </span>
+        );
+      },
+    },
+    {
+      field: "embedding_model",
+      headerName: "Embedding model",
+      ...(isCloudBrand ? { flex: 1.4 } : {}),
+      minWidth: 200,
+      cellRenderer: ({ data }: CustomCellRendererProps<File>) => (
+        <span className="text-xs text-muted-foreground">
+          {data?.embedding_model || "—"}
+        </span>
+      ),
+    },
+    {
+      field: "embedding_dimensions",
+      headerName: "Dimensions",
+      ...(isCloudBrand ? { flex: 0.9, minWidth: 110 } : { width: 110 }),
+      cellRenderer: ({ data }: CustomCellRendererProps<File>) => (
+        <span className="text-xs text-muted-foreground">
+          {typeof data?.embedding_dimensions === "number"
+            ? data.embedding_dimensions.toString()
+            : "—"}
+        </span>
+      ),
     },
     {
       field: "status",
       headerName: "Status",
-      flex: 1,
-      minWidth: 130,
+      ...(isCloudBrand ? { flex: 1, minWidth: 130 } : {}),
       cellRenderer: ({ data }: CustomCellRendererProps<File>) => {
         const status = data?.status || "active";
         const showOpenragRefreshCue =
           isOpenragDocsRow(data) && hasOpenragRefreshCue;
 
         if (showOpenragRefreshCue) {
+          if (isCloudBrand) {
+            return (
+              <div className="inline-flex items-center gap-2 text-primary">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="text-sm font-medium">Refreshing</span>
+              </div>
+            );
+          }
           return (
-            <div className="inline-flex items-center gap-2 text-primary">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              <span className="text-sm font-medium">Refreshing</span>
+            <div className="inline-flex items-center justify-center h-5 w-5">
+              <RefreshCw
+                className="h-4 w-4 text-primary animate-spin"
+                aria-label="OpenRAG doc is refreshing"
+              />
             </div>
           );
         }
@@ -632,7 +498,12 @@ function SearchPage() {
           return (
             <button
               type="button"
-              className="inline-flex items-center h-full text-destructive transition hover:opacity-80"
+              className={cn(
+                "inline-flex items-center h-full transition",
+                isCloudBrand
+                  ? "text-destructive hover:opacity-80"
+                  : "w-full text-red-500 hover:text-red-400",
+              )}
               aria-label="View ingestion error"
               data-testid="failed-status-cell-trigger"
               onClick={() => {
@@ -652,9 +523,9 @@ function SearchPage() {
     {
       colId: "actions",
       headerName: "",
-      width: 56,
-      minWidth: 56,
-      maxWidth: 56,
+      width: isCloudBrand ? 56 : 40,
+      minWidth: isCloudBrand ? 56 : 0,
+      ...(isCloudBrand ? { maxWidth: 56 } : { initialFlex: 0 }),
       sortable: false,
       filter: false,
       resizable: false,
@@ -662,7 +533,6 @@ function SearchPage() {
       cellRenderer: ({ data }: CustomCellRendererProps<File>) => {
         const status = data?.status || "active";
         if (status !== "active") return null;
-
         return (
           <KnowledgeActionsDropdown
             filename={data?.filename || ""}
@@ -682,20 +552,9 @@ function SearchPage() {
   const defaultColDef: ColDef<File> = {
     resizable: false,
     suppressMovable: true,
+    ...(isCloudBrand ? { sortable: false } : {}),
     initialFlex: 1,
     minWidth: 100,
-  };
-
-  const defaultColDefNew: ColDef<File> = {
-    resizable: false,
-    suppressMovable: true,
-    sortable: false,
-    initialFlex: 1,
-    minWidth: 100,
-    cellStyle: {
-      display: "flex",
-      alignItems: "center",
-    },
   };
 
   const onSelectionChanged = useCallback(() => {
@@ -879,8 +738,8 @@ function SearchPage() {
         {isCloudBrand ? (
           <AgGridReact
             className="w-full overflow-auto border"
-            columnDefs={columnDefsNew as ColDef<File>[]}
-            defaultColDef={defaultColDefNew}
+            columnDefs={columnDefs as ColDef<File>[]}
+            defaultColDef={defaultColDef}
             loading={isFetching}
             ref={gridRef}
             theme={themeQuartz.withParams({ browserColorScheme: "inherit" })}

@@ -57,6 +57,18 @@ body {
     border-bottom: 1px solid hsl(var(--border));
   }
 
+  .ag-cell-wrapper {
+    align-items: center;
+    height: 100%;
+  }
+
+  .ag-cell-value {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    overflow: hidden;
+  }
+
   /* Header background */
   .ag-header {
     background-color: #e0e0e0 !important;
