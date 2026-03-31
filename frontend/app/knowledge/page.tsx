@@ -75,7 +75,9 @@ function getSourceIcon(connectorType?: string) {
     case "aws_s3":
       return <AwsLogo className="h-4 w-4 flex-shrink-0" />;
     default:
-      return null;
+      return (
+        <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      );
   }
 }
 
