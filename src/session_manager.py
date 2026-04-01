@@ -217,7 +217,7 @@ class SessionManager:
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify JWT token and return user info"""
         try:
-            raw = token[7:] if token.startswith("Bearer ") else token
+            raw = token.removeprefix("Bearer ")
             payload = jwt.decode(
                 raw,
                 self.public_key,
