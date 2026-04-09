@@ -3537,7 +3537,7 @@
                 "trace_as_metadata": true,
                 "track_in_telemetry": true,
                 "type": "str",
-                "value": "jwt"
+                "value": "basic"
               },
               "bearer_prefix": {
                 "_input_type": "BoolInput",
@@ -3819,11 +3819,11 @@
                 "password": true,
                 "placeholder": "",
                 "required": true,
-                "show": true,
+                "show": false,
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "JWT"
+                "value": ""
               },
               "m": {
                 "_input_type": "IntInput",
@@ -3940,11 +3940,11 @@
                 "password": true,
                 "placeholder": "",
                 "required": false,
-                "show": false,
+                "show": true,
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "MyStrongOpenSearchPassword123!"
+                "value": "OPENSEARCH_PASSWORD"
               },
               "request_timeout": {
                 "_input_type": "StrInput",

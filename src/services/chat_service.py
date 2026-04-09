@@ -187,6 +187,11 @@ class ChatService:
     ):
         """Handle Langflow nudges chat requests with knowledge filters"""
 
+        # Nudges are best-effort. If we don't have a conversation anchor yet,
+        # skip nudges instead of calling Langflow with empty context.
+        if not previous_response_id:
+            return {"response": ""}
+
         if not LANGFLOW_URL or not NUDGES_FLOW_ID:
             raise ValueError(
                 "LANGFLOW_URL and NUDGES_FLOW_ID environment variables are required"
@@ -289,6 +294,14 @@ class ChatService:
                         f"{msg['role']}: {msg['content']}"
                         for msg in conversation_history["messages"]
                         if msg["role"] in ["user", "assistant"]
+                        and not any(
+                            marker in (msg.get("content") or "")
+                            for marker in (
+                                "Error updating tool list",
+                                "unhandled errors in a TaskGroup",
+                                "Temporary internal tool update error",
+                            )
+                        )
                     ]
                 )
                 prompt = f"{conversation_history}"
@@ -296,18 +309,28 @@ class ChatService:
         from agent import async_langflow_chat
 
 
-        response_text, response_id, _sources = await async_langflow_chat(
-            langflow_client,
-            NUDGES_FLOW_ID,
-            prompt,
-            user_id,
-            extra_headers=extra_headers,
-            store_conversation=False,
-        )
-        response_data = {"response": response_text}
-        if response_id:
-            response_data["response_id"] = response_id
-        return response_data
+        if not prompt.strip():
+            return {"response": ""}
+
+        try:
+            response_text, response_id, _sources = await async_langflow_chat(
+                langflow_client,
+                NUDGES_FLOW_ID,
+                prompt,
+                user_id,
+                extra_headers=extra_headers,
+                store_conversation=False,
+            )
+            response_data = {"response": response_text}
+            if response_id:
+                response_data["response_id"] = response_id
+            return response_data
+        except Exception as e:
+            logger.warning(
+                "Nudges flow failed; returning empty nudges response",
+                error=str(e),
+            )
+            return {"response": ""}
 
     async def upload_context_chat(
         self,

@@ -1,6 +1,8 @@
 import json
 import asyncio
 import httpx
+import base64
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -32,6 +34,42 @@ class LangflowFileService:
                 httpx.RequestError,
             ),
         )
+
+    @staticmethod
+    def _resolve_docling_serve_url() -> str:
+        """Return a safe Docling Serve URL with protocol for Langflow global vars."""
+        import os
+
+        raw_url = (os.getenv("DOCLING_SERVE_URL") or "http://host.docker.internal:5001").strip()
+        if not raw_url:
+            return "http://host.docker.internal:5001"
+        if raw_url.startswith(("http://", "https://")):
+            return raw_url
+        logger.warning(
+            "DOCLING_SERVE_URL missing protocol, defaulting to http:// prefix",
+            docling_serve_url=raw_url,
+        )
+        return f"http://{raw_url}"
+
+    @staticmethod
+    def _resolve_langflow_jwt_header(jwt_token: Optional[str]) -> str:
+        """Return JWT global var value for Langflow flows.
+
+        In no-auth mode, OpenSearch security can reject anonymous Bearer tokens
+        issued by OpenRAG. Use Basic admin auth so Langflow OpenSearch components
+        authenticate consistently.
+        """
+        from config.settings import (
+            IBM_AUTH_ENABLED,
+            is_no_auth_mode,
+            OPENSEARCH_USERNAME,
+            OPENSEARCH_PASSWORD,
+        )
+
+        if is_no_auth_mode() and not IBM_AUTH_ENABLED and OPENSEARCH_PASSWORD:
+            creds = f"{OPENSEARCH_USERNAME}:{OPENSEARCH_PASSWORD}".encode("utf-8")
+            return f"Basic {base64.b64encode(creds).decode('ascii')}"
+        return str(jwt_token)
 
     async def upload_user_file(
         self, file_tuple, jwt_token: Optional[str] = None
@@ -151,14 +189,14 @@ class LangflowFileService:
         mimetype = str(file_tuples[0][2]) if file_tuples and len(file_tuples) > 0 and len(file_tuples[0]) > 2 else ""
 
         # Get the current embedding model and provider credentials from config
-        from config.settings import get_openrag_config
+        from config.settings import get_openrag_config, get_index_name
         from utils.langflow_headers import add_provider_credentials_to_headers
         
         config = get_openrag_config()
         embedding_model = config.knowledge.embedding_model
 
         headers = {
-            "X-Langflow-Global-Var-JWT": str(jwt_token),
+            "X-Langflow-Global-Var-JWT": self._resolve_langflow_jwt_header(jwt_token),
             "X-Langflow-Global-Var-OWNER": str(owner),
             "X-Langflow-Global-Var-OWNER_NAME": str(owner_name),
             "X-Langflow-Global-Var-OWNER_EMAIL": str(owner_email),
@@ -169,6 +207,9 @@ class LangflowFileService:
             "X-Langflow-Global-Var-SELECTED_EMBEDDING_MODEL": str(embedding_model),
             "X-Langflow-Global-Var-DOCUMENT_ID": str(document_id) if document_id else "",
             "X-Langflow-Global-Var-SOURCE_URL": str(source_url) if source_url else "",
+            "X-Langflow-Global-Var-DOCLING_SERVE_URL": self._resolve_docling_serve_url(),
+            "X-Langflow-Global-Var-OPENSEARCH_INDEX_NAME": str(get_index_name()),
+            "X-Langflow-Global-Var-OPENSEARCH_PASSWORD": str(os.getenv("OPENSEARCH_PASSWORD", "")),
         }
 
         # Serialize ACL lists as JSON strings for Langflow global vars
@@ -277,13 +318,13 @@ class LangflowFileService:
         if tweaks:
             payload["tweaks"] = tweaks
 
-        from config.settings import get_openrag_config
+        from config.settings import get_openrag_config, get_index_name
         from utils.langflow_headers import add_provider_credentials_to_headers
 
         config = get_openrag_config()
         embedding_model = config.knowledge.embedding_model
         headers = {
-            "X-Langflow-Global-Var-JWT": str(jwt_token),
+            "X-Langflow-Global-Var-JWT": self._resolve_langflow_jwt_header(jwt_token),
             "X-Langflow-Global-Var-OWNER": str(owner),
             "X-Langflow-Global-Var-OWNER_NAME": str(owner_name),
             "X-Langflow-Global-Var-OWNER_EMAIL": str(owner_email),
@@ -292,6 +333,9 @@ class LangflowFileService:
 
             "X-Langflow-Global-Var-DOCUMENT_ID":"",
             "X-Langflow-Global-Var-SOURCE_URL": str(docs_url),
+            "X-Langflow-Global-Var-DOCLING_SERVE_URL": self._resolve_docling_serve_url(),
+            "X-Langflow-Global-Var-OPENSEARCH_INDEX_NAME": str(get_index_name()),
+            "X-Langflow-Global-Var-OPENSEARCH_PASSWORD": str(os.getenv("OPENSEARCH_PASSWORD", "")),
     
             "X-Langflow-Global-Var-ALLOWED_USERS": json.dumps( []),
             "X-Langflow-Global-Var-ALLOWED_GROUPS": json.dumps( []),

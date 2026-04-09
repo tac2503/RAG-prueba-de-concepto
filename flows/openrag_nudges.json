@@ -2415,7 +2415,7 @@
                 "trace_as_metadata": true,
                 "track_in_telemetry": true,
                 "type": "str",
-                "value": "jwt"
+                "value": "basic"
               },
               "bearer_prefix": {
                 "_input_type": "BoolInput",
@@ -2696,12 +2696,12 @@
                 "override_skip": false,
                 "password": true,
                 "placeholder": "",
-                "required": true,
-                "show": true,
+                "required": false,
+                "show": false,
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "JWT"
+                "value": ""
               },
               "m": {
                 "_input_type": "IntInput",
@@ -2817,12 +2817,12 @@
                 "override_skip": false,
                 "password": true,
                 "placeholder": "",
-                "required": false,
-                "show": false,
+                "required": true,
+                "show": true,
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": ""
+                "value": "OPENSEARCH_PASSWORD"
               },
               "request_timeout": {
                 "_input_type": "StrInput",

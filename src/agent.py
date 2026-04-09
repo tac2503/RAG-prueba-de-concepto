@@ -11,6 +11,78 @@ from services.conversation_persistence_service import conversation_persistence
 active_conversations = {}
 
 
+def _resolve_llm_model(model: str = None) -> str:
+    """Resolve an LLM model name compatible with LiteLLM provider routing."""
+    if model:
+        return model
+
+    default_model = "gpt-4.1-mini"
+
+    try:
+        from config.settings import get_openrag_config
+
+        config = get_openrag_config()
+        provider = (getattr(config.agent, "llm_provider", "") or "openai").lower()
+        configured_model = (getattr(config.agent, "llm_model", "") or "").strip()
+
+        if not configured_model:
+            return default_model
+
+        # Add provider prefix when needed so LiteLLM can route non-OpenAI providers.
+        if "/" in configured_model:
+            return configured_model
+
+        if provider in {"ollama", "watsonx", "anthropic"}:
+            return f"{provider}/{configured_model}"
+
+        return configured_model
+    except Exception as e:
+        logger.warning("Failed to resolve configured LLM model, using default", error=str(e))
+        return default_model
+
+
+async def _fallback_with_ollama(prompt: str) -> str | None:
+    """Best-effort direct Ollama fallback that bypasses OpenAI client auth requirements."""
+    try:
+        import httpx
+        from config.settings import get_openrag_config
+
+        config = get_openrag_config()
+        model = (getattr(config.agent, "llm_model", "") or "").strip()
+        ollama_cfg = getattr(config.providers, "ollama", None)
+        endpoint = ""
+        if ollama_cfg:
+            endpoint = (
+                (getattr(ollama_cfg, "resolved_endpoint", "") or "").strip()
+                or (getattr(ollama_cfg, "endpoint", "") or "").strip()
+            )
+
+        if not endpoint or not model:
+            return None
+
+        base_url = endpoint.rstrip("/")
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+        }
+
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(f"{base_url}/api/chat", json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+        message = data.get("message") if isinstance(data, dict) else None
+        content = (message or {}).get("content") if isinstance(message, dict) else None
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+
+        return None
+    except Exception as e:
+        logger.warning("Direct Ollama fallback failed", error=str(e))
+        return None
+
+
 def get_user_conversations(user_id: str):
     """Get conversation metadata for a user from persistent storage"""
     return conversation_persistence.get_user_conversations(user_id)
@@ -295,8 +367,16 @@ async def async_response(
 
         response = await client.responses.create(**request_params)
 
-        # Check if response has output_text using getattr to avoid issues with special objects
-        output_text = getattr(response, "output_text", None)
+        # Access output_text defensively: some providers return response.output=None,
+        # and the SDK property can raise TypeError while iterating it.
+        output_text = None
+        try:
+            output_text = getattr(response, "output_text", None)
+        except TypeError as e:
+            logger.warning(
+                "Response output_text unavailable (provider returned empty output)",
+                error=str(e),
+            )
         if output_text is not None:
             response_text = output_text
             logger.info("Response generated", log_prefix=log_prefix, response=response_text)
@@ -308,12 +388,20 @@ async def async_response(
 
             return response_text, response_id, response
         else:
-            msg = "Nudge response missing output_text"
+            msg = "Response missing output_text"
             error = getattr(response, "error", None)
             if error:
                 error_msg = getattr(error, "message", None)
                 if error_msg:
                     msg = error_msg
+            # Fallback for providers that return message at top-level dict.
+            if hasattr(response, "model_dump"):
+                response_dict = response.model_dump()
+                msg = (
+                    response_dict.get("error", {}).get("message")
+                    if isinstance(response_dict.get("error"), dict)
+                    else response_dict.get("error")
+                ) or response_dict.get("message") or msg
             raise ValueError(msg)
     except Exception as e:
         logger.error("Exception in non-streaming response", error=str(e))
@@ -399,7 +487,7 @@ async def async_chat(
     async_client,
     prompt: str,
     user_id: str,
-    model: str = "gpt-4.1-mini",
+    model: str = None,
     previous_response_id: str = None,
     filter_id: str = None,
 ):
@@ -426,10 +514,12 @@ async def async_chat(
     if filter_id:
         conversation_state["filter_id"] = filter_id
 
+    resolved_model = _resolve_llm_model(model)
+
     response_text, response_id, response_obj = await async_response(
         async_client,
         prompt,
-        model,
+        resolved_model,
         previous_response_id=previous_response_id,
         log_prefix="agent",
     )
@@ -479,7 +569,7 @@ async def async_chat_stream(
     async_client,
     prompt: str,
     user_id: str,
-    model: str = "gpt-4.1-mini",
+    model: str = None,
     previous_response_id: str = None,
     filter_id: str = None,
 ):
@@ -496,13 +586,15 @@ async def async_chat_stream(
     if filter_id:
         conversation_state["filter_id"] = filter_id
 
+    resolved_model = _resolve_llm_model(model)
+
     full_response = ""
     response_id = None
     usage_data = None
     async for chunk in async_stream(
         async_client,
         prompt,
-        model,
+        resolved_model,
         previous_response_id=previous_response_id,
         log_prefix="agent",
     ):
@@ -763,6 +855,11 @@ async def async_langflow_chat_stream(
     usage_data = None
     collected_chunks = []  # Store all chunks for function call data
     error_occurred = False
+    _internal_error_markers = (
+        "Error updating tool list",
+        "Timeout updating tool list",
+        "unhandled errors in a TaskGroup",
+    )
 
     try:
         async for chunk in async_stream(
@@ -780,8 +877,21 @@ async def async_langflow_chat_stream(
                 chunk_data = json.loads(chunk.decode("utf-8"))
                 collected_chunks.append(chunk_data)  # Collect all chunk data
 
+                delta_content = ""
                 if "delta" in chunk_data and "content" in chunk_data["delta"]:
-                    full_response += chunk_data["delta"]["content"]
+                    delta_content = chunk_data["delta"]["content"] or ""
+
+                # Suppress internal Langflow tool-update failures from user output.
+                if any(marker.lower() in delta_content.lower() for marker in _internal_error_markers):
+                    error_occurred = True
+                    logger.warning(
+                        "Suppressed internal tool-update error from Langflow stream",
+                        marker_hit=True,
+                    )
+                    continue
+
+                if delta_content:
+                    full_response += delta_content
                 # Extract response_id from chunk
                 if "id" in chunk_data:
                     response_id = chunk_data["id"]
@@ -792,6 +902,7 @@ async def async_langflow_chat_stream(
                 if chunk_data.get("finish_reason") == "error" or chunk_data.get("status") == "failed":
                     error_occurred = True
                     logger.error("Error detected in Langflow stream chunk")
+                    continue
                 # Capture usage from response.completed event
                 if chunk_data.get("type") == "response.completed":
                     response_obj = chunk_data.get("response", {})
@@ -801,19 +912,58 @@ async def async_langflow_chat_stream(
             yield chunk
 
         # Add the complete assistant response to message history with response_id, timestamp, and function call data
-        if full_response:
-            assistant_message = {
-                "role": "assistant",
-                "content": full_response,
-                "response_id": response_id,
-                "timestamp": datetime.now(),
-                "chunks": collected_chunks,  # Store complete chunk data for function calls
-                "error": error_occurred,  # Mark if this was an error response
+        if not full_response:
+            fallback_text = None
+            try:
+                from config.settings import clients
+
+                llm_text, llm_response_id = await async_chat(
+                    clients.patched_llm_client,
+                    prompt,
+                    user_id,
+                    previous_response_id=None,
+                    filter_id=filter_id,
+                )
+                if llm_text:
+                    fallback_text = llm_text
+                if not response_id and llm_response_id:
+                    response_id = llm_response_id
+                logger.info("Recovered from empty Langflow stream using LLM fallback")
+            except Exception as fallback_error:
+                logger.warning(
+                    "LLM fallback after empty Langflow stream failed",
+                    error=str(fallback_error),
+                )
+
+            if not fallback_text:
+                fallback_text = await _fallback_with_ollama(prompt)
+                if fallback_text:
+                    logger.info("Recovered from empty Langflow stream using direct Ollama fallback")
+
+            full_response = fallback_text or "Temporary internal tool update error. Please try again."
+            fallback_chunk = {
+                "delta": {"content": full_response},
+                "finish_reason": "stop",
             }
-            # Store usage data if available (from response.completed event)
+            if response_id:
+                fallback_chunk["id"] = response_id
+            yield (json.dumps(fallback_chunk, default=str) + "\n").encode("utf-8")
+
+        assistant_message = {
+            "role": "assistant",
+            "content": full_response,
+            "response_id": response_id,
+            "timestamp": datetime.now(),
+            "chunks": collected_chunks,  # Store complete chunk data for function calls
+            "error": error_occurred,  # Mark if this was an error response
+        }
+        # Store usage data if available (from response.completed event)
         if usage_data:
             assistant_message["response_data"] = {"usage": usage_data}
-        conversation_state["messages"].append(assistant_message)
+
+        # Do not persist raw internal TaskGroup/tool-list failures in history.
+        if not any(marker in full_response for marker in _internal_error_markers):
+            conversation_state["messages"].append(assistant_message)
 
         # Store the conversation thread with its response_id
         if response_id:
@@ -836,7 +986,6 @@ async def async_langflow_chat_stream(
         # Log the error
         logger.error(f"Error in langflow chat stream: {e}", exc_info=True)
         error_occurred = True
-
         # Store error message in conversation history so it persists
         error_message = {
             "role": "assistant",

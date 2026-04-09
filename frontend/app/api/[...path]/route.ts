@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const RETRYABLE_ERROR_PATTERNS = [
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_SOCKET",
+  "fetch failed",
+];
+
+const MAX_PROXY_RETRIES = 20;
+const RETRY_BACKOFF_BASE_MS = 300;
+const RETRY_BACKOFF_MAX_MS = 2000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableProxyError(error: unknown): boolean {
+  const serialized = String(error);
+  return RETRYABLE_ERROR_PATTERNS.some((pattern) => serialized.includes(pattern));
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -37,13 +59,17 @@ export async function PATCH(
 
 async function proxyRequest(request: NextRequest, params: { path: string[] }) {
   const backendHost = process.env.OPENRAG_BACKEND_HOST || "localhost";
-  const backendSSL = process.env.OPENRAG_BACKEND_SSL || false;
+  const backendSSL = String(process.env.OPENRAG_BACKEND_SSL || "false").toLowerCase() === "true";
+  const protocol = backendSSL ? "https" : "http";
+  const candidateHostsRaw = Array.from(
+    new Set([backendHost, "openrag-backend"].filter(Boolean)),
+  );
+  const candidateHosts =
+    backendHost === "localhost"
+      ? ["openrag-backend", ...candidateHostsRaw.filter((h) => h !== "openrag-backend")]
+      : candidateHostsRaw;
   const path = params.path.join("/");
   const searchParams = request.nextUrl.searchParams.toString();
-  let backendUrl = `http://${backendHost}:8000/${path}${searchParams ? `?${searchParams}` : ""}`;
-  if (backendSSL) {
-    backendUrl = `https://${backendHost}:8000/${path}${searchParams ? `?${searchParams}` : ""}`;
-  }
 
   try {
     let body: string | ArrayBuffer | undefined = undefined;
@@ -84,6 +110,11 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
         lower.startsWith("host") ||
         lower.startsWith("x-forwarded") ||
         lower.startsWith("x-real-ip") ||
+        lower === "expect" ||
+        lower === "connection" ||
+        lower === "transfer-encoding" ||
+        lower === "upgrade" ||
+        lower === "proxy-connection" ||
         lower === "content-length" ||
         (!willSendBody && lower === "content-type")
       ) {
@@ -102,7 +133,39 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
         typeof body === "string" ? body : new Uint8Array(body as ArrayBuffer);
       init.body = bodyInit;
     }
-    const response = await fetch(backendUrl, init);
+    let response: Response | null = null;
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= MAX_PROXY_RETRIES; attempt++) {
+      for (const host of candidateHosts) {
+        const backendUrl = `${protocol}://${host}:8000/${path}${searchParams ? `?${searchParams}` : ""}`;
+        try {
+          response = await fetch(backendUrl, init);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (!isRetryableProxyError(error)) {
+            throw error;
+          }
+          console.warn("Proxy retryable error", {
+            attempt,
+            backendUrl,
+            error: String(error),
+          });
+        }
+      }
+
+      if (response) {
+        break;
+      }
+
+      const backoffMs = Math.min(RETRY_BACKOFF_BASE_MS * attempt, RETRY_BACKOFF_MAX_MS);
+      await sleep(backoffMs);
+    }
+
+    if (!response) {
+      throw lastError ?? new Error("Backend unavailable after retries");
+    }
 
     const responseHeaders = new Headers();
 

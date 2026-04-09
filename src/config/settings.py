@@ -807,6 +807,23 @@ class AppClients:
         If jwt_token already contains an auth scheme (e.g. "Basic ..." or "Bearer ..."),
         it is used verbatim. Otherwise it is wrapped as a Bearer token.
         """
+        # In no-auth mode, OpenSearch requests should use admin basic auth.
+        # Anonymous JWTs are not always accepted by OpenSearch security config.
+        if is_no_auth_mode() and not IBM_AUTH_ENABLED:
+            return AsyncOpenSearch(
+                hosts=[{"host": OPENSEARCH_HOST, "port": OPENSEARCH_PORT}],
+                connection_class=AIOHttpConnection,
+                scheme="https",
+                use_ssl=True,
+                verify_certs=False,
+                ssl_assert_fingerprint=None,
+                http_auth=(OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD),
+                http_compress=True,
+                timeout=30,
+                max_retries=3,
+                retry_on_timeout=True,
+            )
+
         headers = {}
         if isinstance(jwt_token, str) and jwt_token:
             if jwt_token.startswith(("Basic ", "Bearer ")):
@@ -922,4 +939,8 @@ def get_embedding_model() -> str:
 
 def get_index_name() -> str:
     """Return the currently configured index name."""
-    return get_openrag_config().knowledge.index_name
+    configured_index = (get_openrag_config().knowledge.index_name or "").strip()
+    if configured_index:
+        return configured_index
+    env_index = (os.getenv("OPENSEARCH_INDEX_NAME") or "").strip()
+    return env_index or "documents"

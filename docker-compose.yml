@@ -18,7 +18,7 @@ services:
       - opensearch-data:/usr/share/opensearch/data
     stop_grace_period: 2m
     healthcheck:
-      test: ["CMD-SHELL", "curl -ku admin:$$OPENSEARCH_PASSWORD 'https://localhost:9200/_cluster/health' -s | grep -qE '\"status\":\"(green|yellow)\"'"]
+      test: ["CMD-SHELL", "curl -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD 'https://localhost:9200/_cluster/health' -s | grep -qE '\"status\":\"(green|yellow)\"'"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -111,6 +111,12 @@ services:
     # Linux: Docker Engine does not auto-inject host.docker.internal; map it to the host gateway
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS -o /dev/null http://localhost:8000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   openrag-frontend:
     image: langflowai/openrag-frontend:${OPENRAG_VERSION:-latest}
@@ -119,7 +125,8 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: openrag-frontend
     depends_on:
-      - openrag-backend
+      openrag-backend:
+        condition: service_healthy
     environment:
       - OPENRAG_BACKEND_HOST=openrag-backend
     ports:
